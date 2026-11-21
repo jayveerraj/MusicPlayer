@@ -196,7 +196,7 @@ private class LyricsAdapter(private val onSeek: (Lyrics.Line) -> Unit) :
         view.setTextColor(
             MaterialColors.getColor(
                 view,
-                if (active) com.google.android.material.R.attr.colorPrimary
+                if (active) androidx.appcompat.R.attr.colorPrimary
                 else com.google.android.material.R.attr.colorOnSurface,
             ),
         )

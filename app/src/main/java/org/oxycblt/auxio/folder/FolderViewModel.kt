@@ -112,7 +112,10 @@ constructor(
                 folderCounts.map { (name, count) ->
                     Folder(name, (root + name).joinToString("/"), count)
                 },
-            songs = direct.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.path.name.orEmpty() }),
+            songs =
+                direct.sortedWith(
+                    compareBy(String.CASE_INSENSITIVE_ORDER) { it.path.name.orEmpty() },
+                ),
         )
     }
 
