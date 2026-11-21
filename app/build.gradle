@@ -154,7 +154,7 @@ dependencies {
     // --- THIRD PARTY ---
 
     // Exoplayer (Vendored)
-    implementation "androidx.media3:media3-exoplayer:1.11.1"
+    implementation "androidx.media3:media3-exoplayer:1.11.0"
     implementation "androidx.media3:media3-decoder-ffmpeg:1.11.0"
 
     // Image loading
