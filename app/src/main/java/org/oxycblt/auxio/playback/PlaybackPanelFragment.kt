@@ -40,6 +40,7 @@ import org.oxycblt.auxio.R
 import org.oxycblt.auxio.databinding.FragmentPlaybackPanelBinding
 import org.oxycblt.auxio.detail.DetailViewModel
 import org.oxycblt.auxio.list.ListViewModel
+import org.oxycblt.auxio.lyrics.LyricsDialog
 import org.oxycblt.auxio.music.resolve
 import org.oxycblt.auxio.music.resolveNames
 import org.oxycblt.auxio.playback.queue.QueueViewModel
@@ -230,6 +231,13 @@ class PlaybackPanelFragment :
     }
 
     override fun onMenuItemClick(item: MenuItem): Boolean {
+        if (item.itemId == R.id.action_lyrics) {
+            if (childFragmentManager.findFragmentByTag(LyricsDialog.TAG) == null) {
+                LyricsDialog().show(childFragmentManager, LyricsDialog.TAG)
+            }
+            return true
+        }
+
         if (item.itemId == R.id.action_open_equalizer) {
             // Launch the system equalizer app, if possible.
             L.d("Launching equalizer")

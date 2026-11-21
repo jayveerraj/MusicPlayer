@@ -9,6 +9,12 @@
         app:showAsAction="ifRoom" />
 
     <item
+        android:id="@+id/action_folders"
+        android:icon="@drawable/ic_folder_24"
+        android:title="@string/lbl_folders"
+        app:showAsAction="ifRoom" />
+
+    <item
         android:id="@+id/action_sort"
         android:icon="@drawable/ic_sort_24"
         android:title="@string/lbl_sort"

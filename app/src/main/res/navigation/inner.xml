@@ -90,6 +90,24 @@
         <action
             android:id="@+id/choose_locations"
             app:destination="@id/music_locations_dialog" />
+        <action
+            android:id="@+id/show_folders"
+            app:destination="@id/folder_fragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/folder_fragment"
+        android:name="org.oxycblt.auxio.folder.FolderFragment"
+        android:label="folder_fragment"
+        tools:layout="@layout/fragment_folder">
+        <argument
+            android:name="path"
+            android:defaultValue="@null"
+            app:argType="string"
+            app:nullable="true" />
+        <action
+            android:id="@+id/show_folder"
+            app:destination="@id/folder_fragment" />
     </fragment>
 
     <dialog

@@ -413,6 +413,17 @@ constructor(
     }
 
     /**
+     * Play [song] within a list of [Song]s, such as the contents of a folder.
+     *
+     * @param song The [Song] to start playing.
+     * @param songs The [Song]s to use as the queue.
+     */
+    fun playFromList(song: Song, songs: List<Song>) {
+        L.d("Playing $song from ${songs.size} songs")
+        playImpl(commandFactory.songFromList(song, songs, ShuffleMode.IMPLICIT))
+    }
+
+    /**
      * Shuffle a list of [Song]s.
      *
      * @param songs The [Song]s to shuffle.
