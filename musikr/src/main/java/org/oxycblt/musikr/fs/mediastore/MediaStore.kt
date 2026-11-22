@@ -22,6 +22,7 @@ import android.content.Context
 import android.net.Uri
 import android.provider.MediaStore as AOSPMediaStore
 import androidx.core.database.getStringOrNull
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -40,6 +41,7 @@ import org.oxycblt.musikr.fs.path.VolumeManager
 import org.oxycblt.musikr.fs.saf.contentResolverSafe
 import org.oxycblt.musikr.fs.saf.useQuery
 import org.oxycblt.musikr.fs.track.LocationObserver
+import org.oxycblt.musikr.playlist.m3u.M3U
 import org.oxycblt.musikr.util.tryAsyncWith
 
 /**
@@ -58,13 +60,8 @@ private constructor(
     override suspend fun explore(files: Channel<File>): Deferred<Result<Unit>> = coroutineScope {
         tryAsyncWith(files, Dispatchers.IO) { channel ->
             val projection = BASE_PROJECTION + pathInterpreterFactory.projection
-            var selector = BASE_SELECTOR
-            val args = mutableListOf<String>()
-
-            // Filter out audio that is not music, if enabled
-            if (query.excludeNonMusic) {
-                selector += " AND ${AOSPMediaStore.Audio.AudioColumns.IS_MUSIC}=1"
-            }
+            var pathFilter = ""
+            val pathArgs = mutableListOf<String>()
 
             // Handle include/exclude directories
             when (query.mode) {
@@ -72,69 +69,105 @@ private constructor(
                     val pathSelector =
                         pathInterpreterFactory.createSelector(query.filtered.map { it.path })
                     if (pathSelector != null) {
-                        selector += " AND (${pathSelector.template})"
-                        args.addAll(pathSelector.args)
+                        pathFilter = " AND (${pathSelector.template})"
+                        pathArgs.addAll(pathSelector.args)
                     }
                 }
                 FilterMode.EXCLUDE -> {
                     val pathSelector =
                         pathInterpreterFactory.createSelector(query.filtered.map { it.path })
                     if (pathSelector != null) {
-                        selector += " AND NOT (${pathSelector.template})"
-                        args.addAll(pathSelector.args)
+                        pathFilter = " AND NOT (${pathSelector.template})"
+                        pathArgs.addAll(pathSelector.args)
                     }
                 }
             }
 
-            // Collect all files and track unique directories
-            val allFiles = mutableListOf<File>()
+            var selector = BASE_SELECTOR
+            // Filter out audio that is not music, if enabled
+            if (query.excludeNonMusic) {
+                selector += " AND ${AOSPMediaStore.Audio.AudioColumns.IS_MUSIC}=1"
+            }
+            selector += pathFilter
 
-            context.contentResolverSafe.useQuery(
+            sendFiles(
+                channel,
                 AOSPMediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
                 projection,
                 selector,
-                args.toTypedArray(),
-            ) { cursor ->
-                val pathInterpreter = pathInterpreterFactory.wrap(cursor)
-                val idIndex = cursor.getColumnIndexOrThrow(AOSPMediaStore.Audio.AudioColumns._ID)
-                val mimeTypeIndex =
-                    cursor.getColumnIndexOrThrow(AOSPMediaStore.Audio.AudioColumns.MIME_TYPE)
-                val sizeIndex = cursor.getColumnIndexOrThrow(AOSPMediaStore.Audio.AudioColumns.SIZE)
-                val dateAddedIndex =
-                    cursor.getColumnIndexOrThrow(AOSPMediaStore.Audio.AudioColumns.DATE_ADDED)
-                val dateModifiedIndex =
-                    cursor.getColumnIndexOrThrow(AOSPMediaStore.Audio.AudioColumns.DATE_MODIFIED)
+                pathArgs,
+                "audio/*",
+            )
 
-                while (cursor.moveToNext()) {
-                    val path = pathInterpreter.extract() ?: continue
+            // Playlist files (such as M3U) are not indexed as audio, so they must be queried
+            // separately. This is best-effort, as some devices restrict access to them.
+            try {
+                sendFiles(
+                    channel,
+                    AOSPMediaStore.Files.getContentUri("external"),
+                    projection,
+                    "$BASE_SELECTOR AND $PLAYLIST_SELECTOR$pathFilter",
+                    pathArgs,
+                    M3U.MIME_TYPE,
+                    { M3U.isPlaylistFile(it) },
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Playlist files are optional, loading music should still succeed.
+            }
+        }
+    }
 
-                    val id = cursor.getLong(idIndex)
-                    val uri =
-                        Uri.withAppendedPath(
-                            AOSPMediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-                            id.toString(),
-                        )
-                    val mimeType = cursor.getStringOrNull(mimeTypeIndex) ?: "audio/*"
-                    val size = cursor.getLong(sizeIndex)
-                    val dateAdded = cursor.getLong(dateAddedIndex) * 1000 // Convert to milliseconds
-                    val dateModified =
-                        cursor.getLong(dateModifiedIndex) * 1000 // Convert to milliseconds
+    private suspend fun sendFiles(
+        channel: Channel<File>,
+        contentUri: Uri,
+        projection: Array<String>,
+        selector: String,
+        args: List<String>,
+        defaultMimeType: String,
+        filter: (File) -> Boolean = { true },
+    ) {
+        context.contentResolverSafe.useQuery(
+            contentUri,
+            projection,
+            selector,
+            args.toTypedArray(),
+        ) { cursor ->
+            val pathInterpreter = pathInterpreterFactory.wrap(cursor)
+            val idIndex = cursor.getColumnIndexOrThrow(AOSPMediaStore.Audio.AudioColumns._ID)
+            val mimeTypeIndex =
+                cursor.getColumnIndexOrThrow(AOSPMediaStore.Audio.AudioColumns.MIME_TYPE)
+            val sizeIndex = cursor.getColumnIndexOrThrow(AOSPMediaStore.Audio.AudioColumns.SIZE)
+            val dateAddedIndex =
+                cursor.getColumnIndexOrThrow(AOSPMediaStore.Audio.AudioColumns.DATE_ADDED)
+            val dateModifiedIndex =
+                cursor.getColumnIndexOrThrow(AOSPMediaStore.Audio.AudioColumns.DATE_MODIFIED)
 
-                    // Create file with empty deferred parent
-                    val deviceFile =
-                        File(
-                            uri = uri,
-                            path = path,
-                            modifiedMs = dateModified,
-                            mimeType = mimeType,
-                            size = size,
-                            addedMs = ForwardDateAdded(dateAdded),
-                            parent = null,
-                        )
+            while (cursor.moveToNext()) {
+                val path = pathInterpreter.extract() ?: continue
 
-                    allFiles.add(deviceFile)
-                    channel.send(deviceFile)
-                }
+                val id = cursor.getLong(idIndex)
+                val uri = Uri.withAppendedPath(contentUri, id.toString())
+                val mimeType = cursor.getStringOrNull(mimeTypeIndex) ?: defaultMimeType
+                val size = cursor.getLong(sizeIndex)
+                val dateAdded = cursor.getLong(dateAddedIndex) * 1000 // Convert to milliseconds
+                val dateModified =
+                    cursor.getLong(dateModifiedIndex) * 1000 // Convert to milliseconds
+
+                // Create file with empty deferred parent
+                val deviceFile =
+                    File(
+                        uri = uri,
+                        path = path,
+                        modifiedMs = dateModified,
+                        mimeType = mimeType,
+                        size = size,
+                        addedMs = ForwardDateAdded(dateAdded),
+                        parent = null,
+                    )
+
+                if (filter(deviceFile)) channel.send(deviceFile)
             }
         }
     }
@@ -175,6 +208,11 @@ private constructor(
          * size.
          */
         private const val BASE_SELECTOR = "NOT ${AOSPMediaStore.Audio.Media.SIZE}=0"
+
+        /** Selects playlist files when querying [AOSPMediaStore.Files]. */
+        private val PLAYLIST_SELECTOR =
+            "${AOSPMediaStore.Files.FileColumns.MEDIA_TYPE}=" +
+                "${AOSPMediaStore.Files.FileColumns.MEDIA_TYPE_PLAYLIST}"
 
         /** The base projection that works across all versions of android. */
         private val BASE_PROJECTION =

@@ -42,8 +42,10 @@ import org.oxycblt.musikr.Playlist
 import org.oxycblt.musikr.Song
 import org.oxycblt.musikr.Storage
 import org.oxycblt.musikr.cache.MutableCache
+import org.oxycblt.musikr.fs.File
 import org.oxycblt.musikr.fs.mediastore.MediaStore
 import org.oxycblt.musikr.fs.saf.SAF
+import org.oxycblt.musikr.playlist.ExternalPlaylistManager
 import org.oxycblt.musikr.playlist.db.StoredPlaylists
 import org.oxycblt.musikr.tag.interpret.Naming
 import org.oxycblt.musikr.tag.interpret.Separators
@@ -63,6 +65,9 @@ import timber.log.Timber as L
 interface MusicRepository {
     /** The current library */
     val library: Library?
+
+    /** Playlists read from M3U files found in the music locations during the last load. */
+    val filePlaylists: List<FilePlaylist>
 
     /** The current state of music loading. Null if no load has occurred yet. */
     val indexingState: IndexingState?
@@ -237,6 +242,15 @@ sealed interface IndexingState {
     data class Completed(val error: Exception?) : IndexingState
 }
 
+/**
+ * A read-only playlist backed by an M3U file in the user's music locations.
+ *
+ * @param name The name of the playlist.
+ * @param path The location of the M3U file, used to uniquely identify it.
+ * @param songs The songs in the playlist that could be found in the library.
+ */
+data class FilePlaylist(val name: String, val path: String, val songs: List<Song>)
+
 class MusicRepositoryImpl
 @Inject
 constructor(
@@ -251,6 +265,8 @@ constructor(
     @Volatile private var indexingWorker: IndexingWorker? = null
 
     @Volatile override var library: MutableLibrary? = null
+    @Volatile override var filePlaylists: List<FilePlaylist> = emptyList()
+    private val externalPlaylistManager = ExternalPlaylistManager.from(context)
     @Volatile private var previousCompletedState: IndexingState.Completed? = null
     @Volatile private var currentIndexingState: IndexingState? = null
     override val indexingState: IndexingState?
@@ -418,8 +434,10 @@ constructor(
         // Deliver the library to the rest of the app
         // This will more or less block until all required item translation and
         // cleanup finishes.
+        L.d("Reading ${result.playlistFiles.size} playlist files")
+        val newFilePlaylists = readFilePlaylists(result.library, result.playlistFiles)
         L.d("Emitting new library")
-        emitLibrary(result.library)
+        emitLibrary(result.library, newFilePlaylists)
         // Clean up old data that is now impossible for the app to be using.
         L.d("Cleanup")
         result.cleanup()
@@ -438,7 +456,22 @@ constructor(
         }
     }
 
-    private suspend fun emitLibrary(newLibrary: MutableLibrary) {
+    private suspend fun readFilePlaylists(library: Library, files: List<File>): List<FilePlaylist> =
+        files
+            .mapNotNull { file ->
+                val imported = externalPlaylistManager.import(file) ?: return@mapNotNull null
+                val songs =
+                    imported.paths.mapNotNull { it.firstNotNullOfOrNull(library::findSongByPath) }
+                if (songs.isEmpty()) return@mapNotNull null
+                val name = imported.name ?: file.path.name ?: return@mapNotNull null
+                FilePlaylist(name, file.path.resolve(context), songs)
+            }
+            .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
+
+    private suspend fun emitLibrary(
+        newLibrary: MutableLibrary,
+        newFilePlaylists: List<FilePlaylist>,
+    ) {
         val deviceLibraryChanged: Boolean
         val userLibraryChanged: Boolean
         // We want to make sure that all reads and writes are synchronized due to the sheer
@@ -455,13 +488,16 @@ constructor(
                     this.library?.albums != newLibrary.albums ||
                     this.library?.artists != newLibrary.artists ||
                     this.library?.genres != newLibrary.genres
-            userLibraryChanged = this.library?.playlists != newLibrary.playlists
+            userLibraryChanged =
+                this.library?.playlists != newLibrary.playlists ||
+                    this.filePlaylists != newFilePlaylists
             if (!deviceLibraryChanged && !userLibraryChanged) {
                 L.d("Library has not changed, skipping update")
                 return
             }
 
             this.library = newLibrary
+            this.filePlaylists = newFilePlaylists
         }
 
         // Consumers expect their updates to be on the main thread (notably PlaybackService),

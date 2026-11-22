@@ -26,6 +26,7 @@ import java.io.InputStreamReader
 import java.io.OutputStream
 import org.oxycblt.musikr.Playlist
 import org.oxycblt.musikr.fs.Components
+import org.oxycblt.musikr.fs.File
 import org.oxycblt.musikr.fs.Path
 import org.oxycblt.musikr.fs.Volume
 import org.oxycblt.musikr.fs.path.VolumeManager
@@ -72,6 +73,22 @@ abstract class M3U {
     companion object {
         /** The mime type used for M3U files by the android system. */
         const val MIME_TYPE = "audio/x-mpegurl"
+
+        private val MIME_TYPES =
+            setOf(
+                MIME_TYPE,
+                "audio/mpegurl",
+                "application/x-mpegurl",
+                "application/mpegurl",
+                "application/vnd.apple.mpegurl",
+            )
+
+        /** Whether the given [file] looks like an M3U playlist, by mime type or extension. */
+        fun isPlaylistFile(file: File): Boolean {
+            if (file.mimeType.lowercase() in MIME_TYPES) return true
+            val name = file.path.name?.lowercase() ?: return false
+            return name.endsWith(".m3u") || name.endsWith(".m3u8")
+        }
 
         internal fun from(context: Context): M3U = M3UImpl(VolumeManager.from(context))
     }

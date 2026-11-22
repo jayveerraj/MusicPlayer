@@ -42,6 +42,7 @@ import org.oxycblt.auxio.R
 import org.oxycblt.auxio.databinding.FragmentHomeBinding
 import org.oxycblt.auxio.detail.DetailViewModel
 import org.oxycblt.auxio.detail.Show
+import org.oxycblt.auxio.home.feed.HomeFeedFragment
 import org.oxycblt.auxio.home.list.AlbumListFragment
 import org.oxycblt.auxio.home.list.ArtistListFragment
 import org.oxycblt.auxio.home.list.GenreListFragment
@@ -150,10 +151,10 @@ class HomeFragment : SelectionFragment<FragmentHomeBinding>() {
             setOnApplyWindowInsetsListener { _, insets -> insets }
 
             // We know that there will only be a fixed amount of tabs, so we manually set this
-            // limit to the maximum amount possible. This will prevent the tab ripple from
-            // bugging out due to dynamically inflating each fragment, at the cost of slower
-            // debug UI performance.
-            offscreenPageLimit = Tab.MAX_SEQUENCE_IDX + 1
+            // limit to the maximum amount possible (including the home feed). This will prevent
+            // the tab ripple from bugging out due to dynamically inflating each fragment, at the
+            // cost of slower debug UI performance.
+            offscreenPageLimit = Tab.MAX_SEQUENCE_IDX + 2
 
             dampen()
         }
@@ -218,6 +219,8 @@ class HomeFragment : SelectionFragment<FragmentHomeBinding>() {
                         MusicType.ARTISTS -> HomeFragmentDirections.sortArtists()
                         MusicType.GENRES -> HomeFragmentDirections.sortGenres()
                         MusicType.PLAYLISTS -> HomeFragmentDirections.sortPlaylists()
+                        // The home feed has nothing to sort.
+                        null -> return true
                     }
                 findNavController().navigateSafe(directions)
                 true
@@ -234,9 +237,9 @@ class HomeFragment : SelectionFragment<FragmentHomeBinding>() {
             HomePagerAdapter(homeModel.currentTabTypes, childFragmentManager, viewLifecycleOwner)
 
         val toolbarParams = binding.homeToolbar.layoutParams as AppBarLayout.LayoutParams
-        if (homeModel.currentTabTypes.size == 1) {
-            // A single tab makes the tab layout redundant, hide it and disable the collapsing
-            // behavior.
+        if (homeModel.currentTabTypes.isEmpty()) {
+            // Only the home feed makes the tab layout redundant, hide it and disable the
+            // collapsing behavior.
             L.d("Single tab shown, disabling TabLayout")
             binding.homeTabs.isVisible = false
             binding.homeAppbar.setExpanded(true, false)
@@ -257,8 +260,10 @@ class HomeFragment : SelectionFragment<FragmentHomeBinding>() {
             .attach()
     }
 
-    private fun updateCurrentTab(tabType: MusicType) {
+    private fun updateCurrentTab(tabType: MusicType?) {
         val binding = requireBinding()
+
+        binding.homeNormalToolbar.menu.findItem(R.id.action_sort)?.isVisible = tabType != null
 
         // Update the scrolling view in AppBarLayout to align with the current tab's
         // scrolling state. This prevents the lift state from being confused as one
@@ -270,6 +275,7 @@ class HomeFragment : SelectionFragment<FragmentHomeBinding>() {
                 MusicType.ARTISTS -> R.id.home_artist_recycler
                 MusicType.GENRES -> R.id.home_genre_recycler
                 MusicType.PLAYLISTS -> R.id.home_playlist_recycler
+                null -> R.id.home_feed_recycler
             }
     }
 
@@ -471,7 +477,8 @@ class HomeFragment : SelectionFragment<FragmentHomeBinding>() {
     }
 
     /**
-     * [FragmentStateAdapter] implementation for the [HomeFragment]'s [ViewPager2] instance.
+     * [FragmentStateAdapter] implementation for the [HomeFragment]'s [ViewPager2] instance. The
+     * first page is always the home feed, followed by the configured tabs.
      *
      * @param tabs The current tab configuration. This will define the [Fragment]s created.
      * @param fragmentManager The [FragmentManager] required by [FragmentStateAdapter].
@@ -483,15 +490,17 @@ class HomeFragment : SelectionFragment<FragmentHomeBinding>() {
         fragmentManager: FragmentManager,
         lifecycleOwner: LifecycleOwner,
     ) : FragmentStateAdapter(fragmentManager, lifecycleOwner.lifecycle) {
-        override fun getItemCount() = tabs.size
+        override fun getItemCount() = tabs.size + 1
 
-        override fun createFragment(position: Int): Fragment =
-            when (tabs[position]) {
+        override fun createFragment(position: Int): Fragment {
+            if (position == 0) return HomeFeedFragment()
+            return when (tabs[position - 1]) {
                 MusicType.SONGS -> SongListFragment()
                 MusicType.ALBUMS -> AlbumListFragment()
                 MusicType.ARTISTS -> ArtistListFragment()
                 MusicType.GENRES -> GenreListFragment()
                 MusicType.PLAYLISTS -> PlaylistListFragment()
             }
+        }
     }
 }

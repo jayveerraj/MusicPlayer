@@ -93,6 +93,19 @@
         <action
             android:id="@+id/show_folders"
             app:destination="@id/folder_fragment" />
+        <action
+            android:id="@+id/show_collection"
+            app:destination="@id/collection_fragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/collection_fragment"
+        android:name="org.oxycblt.auxio.home.feed.CollectionFragment"
+        android:label="collection_fragment"
+        tools:layout="@layout/fragment_collection">
+        <argument
+            android:name="collectionId"
+            app:argType="string" />
     </fragment>
 
     <fragment

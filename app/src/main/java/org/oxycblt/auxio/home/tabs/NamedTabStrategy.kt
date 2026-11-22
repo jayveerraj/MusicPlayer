@@ -20,10 +20,12 @@ package org.oxycblt.auxio.home.tabs
 
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator.TabConfigurationStrategy
+import org.oxycblt.auxio.R
 import org.oxycblt.auxio.music.MusicType
 
+/** Names the home tabs, where the first tab is always the home feed followed by [homeTabs]. */
 class NamedTabStrategy(private val homeTabs: List<MusicType>) : TabConfigurationStrategy {
     override fun onConfigureTab(tab: TabLayout.Tab, position: Int) {
-        tab.setText(homeTabs[position].nameRes)
+        tab.setText(if (position == 0) R.string.lbl_home else homeTabs[position - 1].nameRes)
     }
 }

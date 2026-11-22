@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:animateLayoutChanges="true">
+
+    <org.oxycblt.auxio.list.recycler.AuxioRecyclerView
+        android:id="@+id/home_feed_recycler"
+        style="@style/Widget.Auxio.RecyclerView.Linear"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:paddingBottom="@dimen/recycler_fab_space_normal"
+        tools:listitem="@layout/item_home_section" />
+
+    <org.oxycblt.auxio.ui.EdgeFrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <LinearLayout
+            android:id="@+id/home_feed_empty"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            android:padding="@dimen/spacing_medium"
+            android:visibility="invisible">
+
+            <org.oxycblt.auxio.home.list.CookieImageView
+                android:layout_width="@dimen/size_fast_scroll_popup"
+                android:layout_height="@dimen/size_fast_scroll_popup"
+                android:layout_marginBottom="@dimen/spacing_small"
+                android:backgroundTint="?attr/colorSurfaceVariant"
+                android:src="@drawable/ic_song_48"
+                app:tint="?attr/colorOnSurfaceVariant"
+                tools:ignore="ContentDescription" />
+
+            <TextView
+                android:layout_width="256dp"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/spacing_small"
+                android:text="@string/lng_empty_songs"
+                android:textAlignment="center"
+                android:textAppearance="?attr/textAppearanceBodyLarge" />
+
+            <org.oxycblt.auxio.ui.RippleFixMaterialButton
+                android:id="@+id/home_feed_empty_action"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/set_locations" />
+
+        </LinearLayout>
+
+    </org.oxycblt.auxio.ui.EdgeFrameLayout>
+
+</FrameLayout>

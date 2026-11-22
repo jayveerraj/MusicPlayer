@@ -192,7 +192,6 @@ class MainFragment :
 
         binding.mainScrim.setOnClickListener { binding.homeNewPlaylistFab.close() }
         binding.sheetScrim.setOnClickListener { binding.homeNewPlaylistFab.close() }
-        binding.homeShuffleFab.setOnClickListener { playbackModel.shuffleAll() }
         binding.homeNewPlaylistFab.apply {
             inflate(R.menu.new_playlist_actions)
             setOnActionSelectedListener(this@MainFragment)
@@ -388,8 +387,7 @@ class MainFragment :
             .invalidateEnabled()
 
         // Stop the FrameLayout containing the fabs from eating touch events elsewhere
-        binding.mainFabContainer.isVisible =
-            binding.homeNewPlaylistFab.mainFab.isVisible || binding.homeShuffleFab.isVisible
+        binding.mainFabContainer.isVisible = binding.homeNewPlaylistFab.mainFab.isVisible
 
         return true
     }
@@ -422,7 +420,7 @@ class MainFragment :
         )
     }
 
-    private fun updateCurrentTab(tabType: MusicType) {
+    private fun updateCurrentTab(tabType: MusicType?) {
         val binding = requireBinding()
         updateFabVisibility(
             binding,
@@ -454,73 +452,28 @@ class MainFragment :
         binding: FragmentMainBinding,
         songs: List<Song>,
         isFastScrolling: Boolean,
-        tabType: MusicType,
+        tabType: MusicType?,
     ) {
         // If there are no songs, it's likely that the library has not been loaded, so
-        // displaying the shuffle FAB makes no sense. We also don't want the fast scroll
-        // popup to overlap with the FAB, so we hide the FAB when fast scrolling too.
-        if (shouldHideAllFabs(binding, songs, isFastScrolling)) {
+        // displaying the FAB makes no sense. We also don't want the fast scroll popup to overlap
+        // with the FAB, so we hide the FAB when fast scrolling too. The new playlist FAB is only
+        // relevant to the home feed (null) and the playlist tab.
+        if (
+            shouldHideAllFabs(binding, songs, isFastScrolling) ||
+                (tabType != null && tabType != MusicType.PLAYLISTS)
+        ) {
             L.d("Hiding fab: [empty: ${songs.isEmpty()} scrolling: $isFastScrolling]")
-            forceHideAllFabs()
-        } else {
-            if (tabType != MusicType.PLAYLISTS) {
-                if (binding.homeShuffleFab.isOrWillBeShown) {
-                    return
-                }
-
-                if (binding.homeNewPlaylistFab.mainFab.isOrWillBeShown) {
-                    L.d("Animating transition")
-                    binding.homeNewPlaylistFab.hide(
-                        object : FloatingActionButton.OnVisibilityChangedListener() {
-                            override fun onHidden(fab: FloatingActionButton) {
-                                super.onHidden(fab)
-                                if (
-                                    shouldHideAllFabs(
-                                        binding,
-                                        homeModel.songList.value,
-                                        homeModel.isFastScrolling.value,
-                                    )
-                                ) {
-                                    return
-                                }
-                                binding.homeShuffleFab.show()
-                            }
-                        },
-                    )
-                } else {
-                    L.d("Showing immediately")
-                    binding.homeShuffleFab.show()
-                }
-            } else {
-                L.d("Showing playlist button")
-                if (binding.homeNewPlaylistFab.mainFab.isOrWillBeShown) {
-                    return
-                }
-
-                if (binding.homeShuffleFab.isOrWillBeShown) {
-                    L.d("Animating transition")
-                    binding.homeShuffleFab.hide(
-                        object : FloatingActionButton.OnVisibilityChangedListener() {
-                            override fun onHidden(fab: FloatingActionButton) {
-                                super.onHidden(fab)
-                                if (
-                                    shouldHideAllFabs(
-                                        binding,
-                                        homeModel.songList.value,
-                                        homeModel.isFastScrolling.value,
-                                    )
-                                ) {
-                                    return
-                                }
-                                binding.homeNewPlaylistFab.show()
-                            }
-                        },
-                    )
-                } else {
-                    L.d("Showing immediately")
-                    binding.homeNewPlaylistFab.show()
-                }
+            if (binding.homeNewPlaylistFab.isOpen) {
+                binding.homeNewPlaylistFab.close()
             }
+            if (binding.homeNewPlaylistFab.mainFab.isOrWillBeShown) {
+                binding.homeNewPlaylistFab.hide(
+                    object : FloatingActionButton.OnVisibilityChangedListener() {},
+                )
+            }
+        } else if (!binding.homeNewPlaylistFab.mainFab.isOrWillBeShown) {
+            L.d("Showing playlist button")
+            binding.homeNewPlaylistFab.show()
         }
     }
 
@@ -536,9 +489,6 @@ class MainFragment :
 
     private fun forceHideAllFabs() {
         val binding = requireBinding()
-        if (binding.homeShuffleFab.isOrWillBeShown) {
-            FAB_HIDE_FROM_USER_FIELD.invoke(binding.homeShuffleFab, null, false)
-        }
         if (binding.homeNewPlaylistFab.isOpen) {
             binding.homeNewPlaylistFab.close()
         }

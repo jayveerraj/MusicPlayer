@@ -56,6 +56,7 @@ org.oxycblt.musikr/
 ### `ExploreStep.kt`
 - First pipeline stage
 - Discovers music files using FS module
+- Collects M3U/M3U8 playlist files into `LibraryResult.playlistFiles` (not parsed)
 - Integrates with cache for optimization
 - Handles cover pre-loading
 

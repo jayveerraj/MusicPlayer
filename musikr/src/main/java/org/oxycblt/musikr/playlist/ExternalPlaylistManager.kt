@@ -22,6 +22,7 @@ import android.content.Context
 import android.net.Uri
 import org.oxycblt.musikr.Playlist
 import org.oxycblt.musikr.fs.Components
+import org.oxycblt.musikr.fs.File
 import org.oxycblt.musikr.fs.Path
 import org.oxycblt.musikr.fs.Volume
 import org.oxycblt.musikr.fs.path.DocumentPathFactory
@@ -44,6 +45,15 @@ interface ExternalPlaylistManager {
      *   or null if the playlist could not be imported.
      */
     suspend fun import(uri: Uri): ImportedPlaylist?
+
+    /**
+     * Import a playlist [File] found while loading music.
+     *
+     * @param file The playlist [File] to import.
+     * @return An [ImportedPlaylist] containing the paths to the files listed in the playlist file,
+     *   or null if the playlist could not be imported.
+     */
+    suspend fun import(file: File): ImportedPlaylist?
 
     /**
      * Export the given [playlist] to the given [uri].
@@ -97,7 +107,12 @@ private class ExternalPlaylistManagerImpl(
         val filePath =
             documentPathFactory.unpackDocumentUri(uri)
                 ?: Path(Volume.ThirdParty(uri), Components.root())
+        return importImpl(uri, filePath)
+    }
 
+    override suspend fun import(file: File) = importImpl(file.uri, file.path)
+
+    private fun importImpl(uri: Uri, filePath: Path): ImportedPlaylist? {
         return try {
             context.contentResolverSafe.openInputStream(uri)?.use {
                 val imported = m3u.read(it, filePath.directory) ?: return null

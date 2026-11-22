@@ -19,9 +19,11 @@
 package org.oxycblt.musikr
 
 import android.content.Context
+import java.util.concurrent.ConcurrentLinkedQueue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
+import org.oxycblt.musikr.fs.File
 import org.oxycblt.musikr.pipeline.EvaluateStep
 import org.oxycblt.musikr.pipeline.ExploreStep
 import org.oxycblt.musikr.pipeline.Explored
@@ -79,6 +81,12 @@ interface LibraryResult {
     val library: MutableLibrary
 
     /**
+     * Playlist files (such as M3U) found in the music locations while loading. These are not
+     * parsed, use [org.oxycblt.musikr.playlist.ExternalPlaylistManager] to read them.
+     */
+    val playlistFiles: List<File>
+
+    /**
      * Clean up expired resources. This should be done as soon as possible after music loading to
      * reduce storage use.
      *
@@ -117,7 +125,8 @@ private class MusikrImpl(
         var explored = 0
         var loaded = 0
         val exploredChannel = Channel<Explored>(Channel.UNLIMITED)
-        val exploredTask = exploreStep.explore(this, exploredChannel)
+        val playlistFiles = ConcurrentLinkedQueue<File>()
+        val exploredTask = exploreStep.explore(this, exploredChannel, playlistFiles)
         val trackedExploredChannel = Channel<Explored>(Channel.UNLIMITED)
         val trackedExploredTask =
             tryAsyncWith(trackedExploredChannel, Dispatchers.Main) {
@@ -141,12 +150,15 @@ private class MusikrImpl(
             }
         val library = evaluateStep.evaluate(trackedExtractedChannel)
         merge(exploredTask, extractedTask, trackedExploredTask, trackedExtractedTask).await()
-        LibraryResultImpl(config, library)
+        LibraryResultImpl(config, library, playlistFiles.toList())
     }
 }
 
-private class LibraryResultImpl(private val config: Config, override val library: MutableLibrary) :
-    LibraryResult {
+private class LibraryResultImpl(
+    private val config: Config,
+    override val library: MutableLibrary,
+    override val playlistFiles: List<File>,
+) : LibraryResult {
     override suspend fun cleanup() {
         config.storage.covers.cleanup(library.songs.mapNotNull { it.cover })
     }

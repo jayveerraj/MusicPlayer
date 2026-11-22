@@ -124,6 +124,21 @@
     <string name="lng_no_lyrics">No lyrics found</string>
     <string name="lbl_play">Play</string>
     <string name="lbl_shuffle">Shuffle</string>
+    <string name="lbl_home">Home</string>
+    <string name="lbl_top_songs">Your top songs</string>
+    <string name="lbl_recently_added">Recently added</string>
+    <string name="lbl_your_playlists">Your playlists</string>
+    <string name="lbl_home_mixes">Mixes for you</string>
+    <string name="lbl_favorite_artists">Your favorite artists</string>
+    <string name="lbl_show_all">Show all</string>
+    <string name="lbl_playlist_file">Playlist file</string>
+    <string name="lbl_folder">Folder</string>
+    <string name="lbl_genre_mix">Genre mix</string>
+    <!-- As in a mix of songs from the given genre, like "Rock Mix" -->
+    <string name="fmt_genre_mix">%s Mix</string>
+    <!-- Kind of playlist and song count, like "Folder • 12 songs" -->
+    <string name="fmt_home_card_info">%1$s • %2$s</string>
+    <string name="lng_home_no_playlists">Create a playlist with the + button, put songs in a folder (like Music/Roadtrip), or add an .m3u file to your music folder.</string>
 
     <string name="lbl_queue">Queue</string>
     <string name="lbl_play_next">Play next</string>

@@ -127,14 +127,14 @@ constructor(
 
     /**
      * A list of [MusicType] corresponding to the current [Tab] configuration, excluding invisible
-     * [Tab]s.
+     * [Tab]s. The home feed page is always shown before these.
      */
     var currentTabTypes = homeGenerator.tabs()
         private set
 
-    private val _currentTabType = MutableStateFlow(currentTabTypes[0])
-    /** The [MusicType] of the currently shown [Tab]. */
-    val currentTabType: StateFlow<MusicType> = _currentTabType
+    private val _currentTabType = MutableStateFlow<MusicType?>(null)
+    /** The [MusicType] of the currently shown [Tab], or null if the home feed page is shown. */
+    val currentTabType: StateFlow<MusicType?> = _currentTabType
 
     /**
      * A marker to re-create all library tabs, usually initiated by a settings change. When this
@@ -193,6 +193,8 @@ constructor(
 
     override fun invalidateTabs() {
         currentTabTypes = homeGenerator.tabs()
+        // The pager is moved back to the home feed when it's re-created.
+        _currentTabType.value = null
         recreateTabs.put(Unit)
     }
 
@@ -244,11 +246,12 @@ constructor(
     /**
      * Update [currentTabType] to reflect a new ViewPager2 position
      *
-     * @param pagerPos The new position of the ViewPager2 instance.
+     * @param pagerPos The new position of the ViewPager2 instance. Position 0 is the home feed.
      */
     fun synchronizeTabPosition(pagerPos: Int) {
-        L.d("Updating current tab to ${currentTabTypes[pagerPos]}")
-        _currentTabType.value = currentTabTypes[pagerPos]
+        val type = if (pagerPos == 0) null else currentTabTypes.getOrNull(pagerPos - 1)
+        L.d("Updating current tab to $type")
+        _currentTabType.value = type
     }
 
     /**
