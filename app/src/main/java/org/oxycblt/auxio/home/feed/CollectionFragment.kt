@@ -83,10 +83,9 @@ class CollectionFragment : ViewBindingFragment<FragmentCollectionBinding>() {
     private fun updateCollection(collection: SongCollection?) {
         val toolbar = requireBinding().collectionToolbar
         toolbar.title = collection?.name
-        toolbar.subtitle =
-            collection?.let {
-                resources.getQuantityString(R.plurals.fmt_song_count, it.songs.size, it.songs.size)
-            }
+        toolbar.subtitle = collection?.let {
+            resources.getQuantityString(R.plurals.fmt_song_count, it.songs.size, it.songs.size)
+        }
         collectionAdapter.submit(collection?.songs.orEmpty())
     }
 }

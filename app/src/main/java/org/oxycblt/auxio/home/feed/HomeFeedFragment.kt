@@ -177,8 +177,7 @@ class HomeFeedFragment : ViewBindingFragment<FragmentHomeFeedBinding>() {
                 TYPE_SECTION ->
                     SectionHolder(ItemHomeSectionBinding.inflate(inflater, parent, false))
                 TYPE_SONG -> SongHolder(ItemSongBinding.inflate(inflater, parent, false))
-                TYPE_CARDS ->
-                    CardsHolder(ItemHomeCarouselBinding.inflate(inflater, parent, false))
+                TYPE_CARDS -> CardsHolder(ItemHomeCarouselBinding.inflate(inflater, parent, false))
                 TYPE_ARTISTS ->
                     ArtistsHolder(ItemHomeCarouselBinding.inflate(inflater, parent, false))
                 else -> HintHolder(ItemHomeHintBinding.inflate(inflater, parent, false))

@@ -128,15 +128,15 @@ class HomeFeedBuilder(
             }
         val name =
             context.getString(
-                if (playedSongs.isNotEmpty()) R.string.lbl_top_songs else R.string.lbl_recently_added,
+                if (playedSongs.isNotEmpty()) R.string.lbl_top_songs
+                else R.string.lbl_recently_added,
             )
         return SongCollection(TOP_SONGS_ID, CollectionKind.TOP_SONGS, name, songs)
     }
 
-    private fun filePlaylists() =
-        filePlaylists.map {
-            SongCollection(FILE_PREFIX + it.path, CollectionKind.FILE, it.name, it.songs)
-        }
+    private fun filePlaylists() = filePlaylists.map {
+        SongCollection(FILE_PREFIX + it.path, CollectionKind.FILE, it.name, it.songs)
+    }
 
     /**
      * Treat folders of songs as playlists, e.g "Music/Roadtrip". Folders that are just a single
@@ -186,8 +186,8 @@ class HomeFeedBuilder(
     }
 
     /**
-     * One mix per genre, ordered by how much the user listens to it. Each mix leads with the
-     * user's most played songs of that genre, followed by the rest in a stable shuffled order.
+     * One mix per genre, ordered by how much the user listens to it. Each mix leads with the user's
+     * most played songs of that genre, followed by the rest in a stable shuffled order.
      */
     private fun genreMixes(limit: Int = MAX_MIXES): List<SongCollection> {
         val plays = stats.mapValues { it.value.count }

@@ -71,15 +71,14 @@ constructor(
         val filePlaylists = musicRepository.filePlaylists
         val stats = playStats.stats.value.orEmpty()
         job?.cancel()
-        job =
-            viewModelScope.launch {
-                // withContext discards the result if this job was cancelled in the meantime.
-                val feed =
-                    withContext(Dispatchers.Default) {
-                        HomeFeedBuilder(context, library, filePlaylists, stats).build()
-                    }
-                _feed.value = feed
-            }
+        job = viewModelScope.launch {
+            // withContext discards the result if this job was cancelled in the meantime.
+            val feed =
+                withContext(Dispatchers.Default) {
+                    HomeFeedBuilder(context, library, filePlaylists, stats).build()
+                }
+            _feed.value = feed
+        }
     }
 }
 
@@ -123,13 +122,12 @@ constructor(
         // Intentionally not refreshed on every play, so the list doesn't reorder while in use.
         val stats = playStats.stats.value.orEmpty()
         job?.cancel()
-        job =
-            viewModelScope.launch {
-                val collection =
-                    withContext(Dispatchers.Default) {
-                        HomeFeedBuilder(context, library, filePlaylists, stats).find(id)
-                    }
-                _collection.value = collection
-            }
+        job = viewModelScope.launch {
+            val collection =
+                withContext(Dispatchers.Default) {
+                    HomeFeedBuilder(context, library, filePlaylists, stats).find(id)
+                }
+            _collection.value = collection
+        }
     }
 }
